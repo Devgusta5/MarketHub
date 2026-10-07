@@ -1,40 +1,146 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────────────────
+   DESPACHO — painel de partidas + cartão de embarque
+   Mundo escuro por padrão: operação, uso prolongado, sala com
+   luz artificial. O âmbar é reservado: significa "precisa de
+   ação" e nunca aparece como decoração.
+   ─────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #f6f7f9;
-  --surface: #ffffff;
-  --foreground: #16181d;
-  --muted: #646b7a;
-  --border: #e3e6eb;
-  --accent: #2f5fe0;
-  --accent-foreground: #ffffff;
+  /* Superfícies */
+  --deep: #0b0d11; /* fundo da página — fora do painel */
+  --panel: #15181f; /* o painel em si */
+  --panel-raised: #1c212b; /* linha em hover, campos */
+  --rule: #1f2530; /* réguas entre linhas */
+  --rule-strong: #2c3442; /* moldura do painel, divisórias de bloco */
+
+  /* Tinta */
+  --ink: #f2f4f7; /* dado principal */
+  --ink-dim: #8a94a6; /* rótulo, metadado */
+  --ink-faint: #5b6577; /* ausência, placeholder */
+
+  /* Alerta — reservado para "precisa de ação" */
+  --alert: #ffc107;
+  --alert-ink: #1a1403; /* texto sobre âmbar sólido */
+
+  /* Canais: tinta própria e constante no sistema inteiro */
+  --ml: #ffe14d;
+  --shopee: #ff6b35;
+  --amazon: #4dd0e1;
+
+  /* Estado de preparo */
+  --ready: #4ade80;
+
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0e1014;
-    --surface: #171a20;
-    --foreground: #e9ebef;
-    --muted: #99a1b0;
-    --border: #262b34;
-    --accent: #5b86f5;
-    --accent-foreground: #0e1014;
-  }
+  --color-deep: var(--deep);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-faint: var(--ink-faint);
+  --color-alert: var(--alert);
+  --color-alert-ink: var(--alert-ink);
+  --color-ml: var(--ml);
+  --color-shopee: var(--shopee);
+  --color-amazon: var(--amazon);
+  --color-ready: var(--ready);
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-data);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--deep);
+  color: var(--ink);
+  /* Figuras tabulares em toda a interface: é um painel de dados,
+     os números têm que alinhar em coluna. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ── Superfícies do navegador: parte do design, não defaults ── */
+
+::selection {
+  background: var(--alert);
+  color: var(--alert-ink);
+}
+
+::placeholder {
+  color: var(--ink-faint);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border: 3px solid var(--deep);
+  border-radius: 0;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--alert);
+  outline-offset: 1px;
+}
+
+/* ── Vocabulário do mundo ── */
+
+/* Rótulo de coluna / campo: caixa alta, tracking aberto, pequeno.
+   É a etiqueta impressa do cartão. */
+.label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Linha perfurada entre segmentos do cartão de embarque. */
+.perforation {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--rule-strong) 0 4px,
+    transparent 4px 9px
+  );
+  height: 1px;
+}
+
+.perforation-v {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--rule-strong) 0 4px,
+    transparent 4px 9px
+  );
+  width: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

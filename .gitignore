@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Build artifacts
 /tsconfig.tsbuildinfo
+
+# Impeccable: estado de trabalho local
+.impeccable/mocks/
