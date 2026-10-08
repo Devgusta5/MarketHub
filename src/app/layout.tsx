@@ -1,34 +1,40 @@
 import type { Metadata } from 'next'
-import { Saira_Condensed, Martian_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { APPEARANCE_INIT, AppearanceProvider } from '@/components/appearance'
+import { AppShell } from '@/components/shell'
 
-// Painel: condensada, técnica, cabe muita coluna sem apertar a leitura.
-const display = Saira_Condensed({
-  variable: '--font-display',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-})
-
-// Dados: mono desenhada para grade — códigos, SKU, números, rótulos.
-const data = Martian_Mono({
-  variable: '--font-data',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-})
+const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
+const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MarketHub — Despacho',
+  title: {
+    default: 'MarketHub',
+    template: '%s · MarketHub',
+  },
   description:
-    'Central de produtos e conteúdo: uma ficha por produto, adaptada para cada marketplace.',
+    'Centralize, organize e prepare seus produtos para cada marketplace.',
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="pt-BR"
-      className={`${display.variable} ${data.variable} h-full antialiased`}
+      data-theme="light"
+      data-accent="orange"
+      data-density="comfortable"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="font-sans min-h-full bg-deep">{children}</body>
+      <head>
+        {/* Aplica o tema salvo antes da primeira pintura. */}
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_INIT }} />
+      </head>
+      <body className="font-sans min-h-full">
+        <AppearanceProvider>
+          <AppShell>{children}</AppShell>
+        </AppearanceProvider>
+      </body>
     </html>
   )
 }

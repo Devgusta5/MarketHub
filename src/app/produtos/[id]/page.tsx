@@ -1,78 +1,73 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  ImagePlus,
+  Plus,
+  Sparkles,
+  XCircle,
+} from 'lucide-react'
 import { getProduct } from '@/lib/store'
 import {
+  MARKETPLACES,
   MARKETPLACE_LABELS,
+  basePendings,
+  channelPendings,
+  completeness,
+  effectiveDescription,
   effectiveTitle,
+  isInherited,
+  pendings,
+  primaryImage,
+  version,
   type Marketplace,
   type Product,
   type ProductEventKind,
 } from '@/lib/types'
 import {
-  CHANNEL_CODE,
-  CHANNEL_INK,
-  ChannelTape,
-  Segment,
-  StatusCell,
-  Value,
-  channelState,
-  pendingReason,
-} from '@/components/despacho'
-
-const EVENT_LABEL: Record<ProductEventKind, string> = {
-  created: 'CRIADO',
-  updated: 'ALTERADO',
-  image_added: 'FOTO +',
-  image_removed: 'FOTO −',
-  ai_generated: 'IA',
-  marketplace_updated: 'CANAL',
-}
-
-function dateTime(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  ChannelStatusBadge,
+  ContentStatusBadge,
+  Field,
+  ProductStatusBadge,
+  ProgressBar,
+  SectionHeading,
+  Skeleton,
+} from '@/components/ui'
 
 export default function ProductPage(props: PageProps<'/produtos/[id]'>) {
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-rule-strong bg-panel">
-        <div className="mx-auto flex h-12 w-full max-w-[1100px] items-center px-6">
-          <Link
-            href="/"
-            className="font-mono transition-colors hover:text-ink"
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.14em',
-              color: 'var(--ink-dim)',
-            }}
-          >
-            ← PAINEL
-          </Link>
-        </div>
-      </header>
-      <div className="mx-auto w-full max-w-[1100px] px-6 py-8">
-        <Suspense fallback={<CardSkeleton />}>
-          <ProductCard params={props.params} />
-        </Suspense>
-      </div>
+    <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
+      <Link
+        href="/produtos"
+        className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary transition-colors hover:text-text-primary"
+      >
+        <ArrowLeft size={14} aria-hidden />
+        Produtos
+      </Link>
+      <Suspense fallback={<ProductSkeleton />}>
+        <ProductDetail params={props.params} />
+      </Suspense>
     </div>
   )
 }
 
-function CardSkeleton() {
+function ProductSkeleton() {
   return (
-    <div className="border border-rule-strong bg-panel" style={{ height: 480 }} />
+    <div className="mt-4 space-y-6">
+      <Skeleton className="h-24" />
+      <Skeleton className="h-64" />
+    </div>
   )
 }
 
-async function ProductCard({
+async function ProductDetail({
   params,
 }: {
   params: PageProps<'/produtos/[id]'>['params']
@@ -81,306 +76,485 @@ async function ProductCard({
   const product = await getProduct(id)
   if (!product) notFound()
 
-  const pending = pendingReason(product)
+  const { filled, total } = completeness(product)
+  const issues = pendings(product)
+  const baseIssues = basePendings(product)
+  const channelIssues = channelPendings(product)
+  const required = issues.filter((i) => i.severity === 'required')
 
   return (
     <>
-      {/* ── O cartão ── */}
-      <article className="border border-rule-strong bg-panel">
-        {/* Talão superior: identificação */}
-        <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_200px_140px]">
-          <Segment label="produto" className="col-span-2 sm:col-span-1">
-            <Value size={22}>{product.name}</Value>
-          </Segment>
-          <div className="border-t border-rule sm:border-t-0 sm:border-l">
-            <Segment label="sku">
-              <Value mono size={20}>
-                {product.sku}
-              </Value>
-            </Segment>
+      {/* 1. Cabeçalho compacto (§12) */}
+      <header className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight">{product.name}</h1>
+            <ProductStatusBadge status={product.status} />
           </div>
-          <div className="border-t border-l border-rule sm:border-t-0">
-            <Segment label="estado">
-              <div className="pt-1">
-                <StatusCell status={product.status} pending={pending} />
-              </div>
-            </Segment>
-          </div>
+          <p className="mt-1 font-mono text-[13px] text-text-secondary">
+            {product.sku}
+            {product.brand ? (
+              <span className="font-sans"> · {product.brand}</span>
+            ) : null}
+          </p>
         </div>
-
-        <div className="perforation" />
-
-        {/* Talão do meio: dados de base */}
-        <div className="grid grid-cols-2 sm:grid-cols-4">
-          <Segment label="marca">
-            <Value mono size={14} dim={!product.brand}>
-              {product.brand ?? '——'}
-            </Value>
-          </Segment>
-          <div className="border-l border-rule">
-            <Segment label="categoria">
-              <Value mono size={14} dim={!product.category}>
-                {product.category ?? '——'}
-              </Value>
-            </Segment>
-          </div>
-          <div className="border-l border-rule">
-            <Segment label="imagens">
-              <ImageStrip product={product} />
-            </Segment>
-          </div>
-          <div className="border-l border-rule">
-            <Segment label="canais">
-              <div className="pt-0.5">
-                <ChannelTape product={product} />
-              </div>
-            </Segment>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button>Editar</Button>
+          {required.length > 0 ? (
+            // Botão morto é beco sem saída: leva à primeira pendência.
+            <ButtonLink href={`#${required[0].field}`} variant="secondary">
+              <AlertTriangle size={13} aria-hidden />
+              {required.length} {required.length === 1 ? 'pendência' : 'pendências'} para
+              publicar
+            </ButtonLink>
+          ) : (
+            <Button variant="primary">Preparar publicação</Button>
+          )}
         </div>
+      </header>
 
-        <div className="perforation" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-6">
+          {/* 4. Informações base */}
+          <Card>
+            <SectionHeading hint="A fonte central. Os canais herdam daqui quando não têm conteúdo próprio.">
+              Informações base
+            </SectionHeading>
 
-        {/* Talão inferior: conteúdo base */}
-        <Segment label="descrição base">
-          <div className="flex items-start justify-between gap-6">
-            <p
-              className="max-w-[68ch]"
-              style={{
-                fontSize: 14,
-                lineHeight: 1.6,
-                color: product.baseDescription ? 'var(--ink)' : 'var(--ink-faint)',
-              }}
-            >
-              {product.baseDescription ?? 'Sem descrição base. Os canais não têm o que herdar.'}
-            </p>
-            <button
-              type="button"
-              disabled
-              className="font-mono shrink-0 border border-rule-strong px-3 py-2"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.12em',
-                color: 'var(--ink-faint)',
-              }}
-            >
-              GERAR · IA
-            </button>
-          </div>
-        </Segment>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+              <Field label="Nome" value={product.name} />
+              <Field label="SKU" value={product.sku} mono />
+              <Field label="Marca" value={product.brand} />
+              <Field label="Categoria" value={product.category} />
+              <Field label="Nome interno" value={product.internalName} />
+            </dl>
 
-        {product.tags.length > 0 || Object.keys(product.attributes).length > 0 ? (
-          <>
-            <div className="perforation" />
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
-              <Segment label="tags">
-                {product.tags.length === 0 ? (
-                  <Value mono size={13} dim>
-                    ——
-                  </Value>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {product.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="font-mono border border-rule-strong px-2 py-1"
-                        style={{ fontSize: 10, letterSpacing: '0.06em' }}
-                      >
-                        {tag}
+            <div id="description" className="mt-6 border-t border-border pt-5">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-text-secondary">
+                    Descrição
+                  </span>
+                  {product.description ? (
+                    <ContentStatusBadge status={product.description.status} />
+                  ) : null}
+                </div>
+                <Button size="sm" disabled>
+                  <Sparkles size={13} aria-hidden />
+                  Gerar com IA
+                </Button>
+              </div>
+
+              {product.description ? (
+                <>
+                  <p className="max-w-[70ch] text-[13px] leading-relaxed">
+                    {product.description.value}
+                  </p>
+                  {product.description.status === 'awaiting_approval' ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-warning-surface bg-warning-surface px-3 py-2">
+                      <AlertTriangle size={13} className="text-warning" aria-hidden />
+                      <span className="flex-1 text-[13px]">
+                        Esta descrição foi gerada com IA e ainda não foi revisada.
                       </span>
-                    ))}
-                  </div>
+                      <Button size="sm" variant="primary" disabled>
+                        Aprovar
+                      </Button>
+                      <Button size="sm" disabled>
+                        Editar
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-[13px] text-text-tertiary">
+                  Sem descrição. Os canais não têm conteúdo para herdar.
+                </p>
+              )}
+            </div>
+
+            <div id="attributes" className="mt-6 border-t border-border pt-5">
+              <span className="text-xs font-medium text-text-secondary">Atributos</span>
+              {Object.keys(product.attributes).length === 0 ? (
+                <p className="mt-2 text-[13px] text-text-tertiary">
+                  Nenhum atributo informado.
+                </p>
+              ) : (
+                <dl className="mt-2 grid gap-x-8 sm:grid-cols-2">
+                  {Object.entries(product.attributes).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-baseline justify-between gap-4 border-b border-border py-1.5 last:border-b-0"
+                    >
+                      <dt className="text-[13px] text-text-secondary">{key}</dt>
+                      <dd className="text-right text-[13px]">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+
+            <div id="tags" className="mt-6 border-t border-border pt-5">
+              <span className="text-xs font-medium text-text-secondary">Tags</span>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {product.tags.length === 0 ? (
+                  <p className="text-[13px] text-text-tertiary">Nenhuma tag.</p>
+                ) : (
+                  product.tags.map((tag) => <Badge key={tag}>{tag}</Badge>)
                 )}
-              </Segment>
-              <div className="border-t border-rule sm:border-t-0 sm:border-l">
-                <Segment label="atributos">
-                  <dl className="min-w-[280px]">
-                    {Object.entries(product.attributes).map(([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex items-baseline gap-3 border-b border-rule py-1 last:border-b-0"
-                      >
-                        <dt className="label shrink-0">{key}</dt>
-                        {/* Pontilhado liga rótulo a valor, como ficha impressa. */}
-                        <dd
-                          aria-hidden
-                          className="min-w-3 flex-1 shrink self-center"
-                          style={{
-                            height: 1,
-                            backgroundImage:
-                              'repeating-linear-gradient(to right, var(--rule-strong) 0 1px, transparent 1px 4px)',
-                          }}
-                        />
-                        <dd
-                          className="font-mono min-w-0 text-right"
-                          style={{ fontSize: 11, color: 'var(--ink)' }}
-                        >
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </Segment>
               </div>
             </div>
-          </>
-        ) : null}
-      </article>
+          </Card>
 
-      {/* ── Embarques: um por canal ── */}
-      <h2 className="label mt-10 mb-3">embarques</h2>
-      <div className="grid gap-px border border-rule-strong bg-rule-strong sm:grid-cols-3">
-        {product.versions.map((version) => (
-          <ChannelStub
-            key={version.marketplace}
-            product={product}
-            marketplace={version.marketplace}
-          />
-        ))}
-      </div>
+          {/* 5. Mídia */}
+          <Card id="images">
+            <SectionHeading hint="A primeira imagem é a principal em todos os canais.">
+              Imagens
+            </SectionHeading>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {product.images.map((image) => {
+                const isPrimary = image.id === primaryImage(product)?.id
+                return (
+                  <div
+                    key={image.id}
+                    className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border bg-surface-sunken ${
+                      isPrimary ? 'border-accent' : 'border-border'
+                    }`}
+                    title={image.altText ?? undefined}
+                  >
+                    <span className="text-[11px] text-text-tertiary">
+                      {image.altText ?? 'Imagem'}
+                    </span>
+                    {isPrimary ? (
+                      <span className="absolute top-1 left-1 rounded bg-accent px-1 py-0.5 text-[9px] font-medium text-accent-contrast">
+                        Principal
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
+              <button
+                type="button"
+                disabled
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-text-tertiary transition-colors hover:border-border-strong disabled:cursor-not-allowed"
+              >
+                <ImagePlus size={16} aria-hidden />
+                <span className="text-[11px]">Adicionar</span>
+              </button>
+            </div>
+          </Card>
 
-      {/* ── Histórico ── */}
-      <h2 className="label mt-10 mb-3">histórico</h2>
-      <div className="border border-rule-strong bg-panel">
-        {product.events.map((event) => (
-          <div
-            key={event.id}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 border-b border-rule px-4 py-2.5 last:border-b-0 sm:grid-cols-[86px_minmax(0,1fr)_auto]"
-          >
-            <span
-              className="font-mono"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.1em',
-                color:
-                  event.kind === 'ai_generated' ? 'var(--alert)' : 'var(--ink-faint)',
-              }}
-            >
-              {EVENT_LABEL[event.kind]}
-            </span>
-            <span
-              className="font-mono text-right sm:order-3"
-              style={{ fontSize: 10, color: 'var(--ink-faint)' }}
-            >
-              {dateTime(event.createdAt)}
-            </span>
-            <span className="col-span-2 sm:order-2 sm:col-span-1" style={{ fontSize: 14 }}>
-              {event.summary}
-            </span>
-          </div>
-        ))}
+          {/* 6. Marketplaces */}
+          <Card>
+            <SectionHeading hint="Cada canal tem estado próprio. Campo vazio usa o conteúdo base.">
+              Marketplaces
+            </SectionHeading>
+            <div className="space-y-3">
+              {MARKETPLACES.map((marketplace) => (
+                <ChannelPanel
+                  key={marketplace}
+                  product={product}
+                  marketplace={marketplace}
+                />
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Coluna lateral: completude, pendências, histórico */}
+        <div className="space-y-6">
+          {/* 2. Resumo de completude */}
+          <Card>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-semibold tracking-tight">Completude</span>
+              <span className="text-[13px] tabular-nums text-text-secondary">
+                {filled} de {total}
+              </span>
+            </div>
+            <div className="mt-3">
+              <ProgressBar
+                value={filled}
+                total={total}
+                tone={filled === total ? 'success' : 'accent'}
+              />
+            </div>
+            <p className="mt-2 text-xs text-text-secondary">
+              {filled === total
+                ? 'Todas as informações essenciais estão preenchidas.'
+                : `Faltam ${total - filled} informações essenciais.`}
+            </p>
+          </Card>
+
+          {/* 3. Pendências acionáveis */}
+          {issues.length > 0 ? (
+            <Card>
+              <SectionHeading hint="Cada item leva ao campo correspondente.">
+                Pendências
+              </SectionHeading>
+              {baseIssues.length > 0 ? (
+                <p className="mb-1.5 text-[11px] font-medium text-text-secondary">
+                  No produto
+                </p>
+              ) : null}
+              <ul className="space-y-1">
+                {baseIssues.map((issue, i) => (
+                  <li key={`${issue.field}-${i}`}>
+                    <Link
+                      href={`#${issue.field.startsWith('channel-') ? issue.field : issue.field}`}
+                      className="-mx-2 flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-surface-sunken"
+                    >
+                      {issue.severity === 'required' ? (
+                        <AlertTriangle
+                          size={13}
+                          className="mt-0.5 shrink-0 text-warning"
+                          aria-hidden
+                        />
+                      ) : (
+                        <span
+                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-border-strong"
+                          aria-hidden
+                        />
+                      )}
+                      <span className="min-w-0">
+                        <span className="block text-[13px] leading-snug">
+                          {issue.action}
+                        </span>
+                        <span className="text-[11px] text-text-tertiary">
+                          {issue.label}
+                          {issue.severity === 'required' ? ' · obrigatório' : ''}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              {channelIssues.length > 0 ? (
+                <>
+                  <p className="mt-4 mb-1.5 text-[11px] font-medium text-text-secondary">
+                    Nos canais
+                  </p>
+                  <ul className="space-y-1">
+                    {channelIssues.map((issue, i) => (
+                      <li key={`${issue.field}-${i}`}>
+                        <Link
+                          href={`#${issue.field}`}
+                          className="-mx-2 flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-surface-sunken"
+                        >
+                          <AlertTriangle
+                            size={13}
+                            className="mt-0.5 shrink-0 text-warning"
+                            aria-hidden
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-[13px] leading-snug">
+                              {issue.action}
+                            </span>
+                            <span className="text-[11px] text-text-tertiary">
+                              {issue.label}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="text-success" aria-hidden />
+                <p className="text-[13px]">Nenhuma pendência neste produto.</p>
+              </div>
+            </Card>
+          )}
+
+          {/* 7. Histórico */}
+          <Card>
+            <SectionHeading>Atividade</SectionHeading>
+            <ol className="space-y-3">
+              {product.events.map((event) => (
+                <li key={event.id} className="flex gap-2.5">
+                  <EventDot kind={event.kind} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] leading-snug">{event.summary}</p>
+                    {event.detail ? (
+                      <p className="mt-0.5 text-[11px] text-text-secondary">
+                        {event.detail}
+                      </p>
+                    ) : null}
+                    <p className="mt-0.5 text-[11px] text-text-tertiary">
+                      {event.actor} ·{' '}
+                      {new Date(event.createdAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        </div>
       </div>
     </>
   )
 }
 
-function ChannelStub({
+function EventDot({ kind }: { kind: ProductEventKind }) {
+  if (kind === 'ai_generated') {
+    return <Sparkles size={13} className="mt-0.5 shrink-0 text-accent-text" aria-hidden />
+  }
+  if (kind === 'sync_failed') {
+    return <XCircle size={13} className="mt-0.5 shrink-0 text-danger" aria-hidden />
+  }
+  if (kind === 'published' || kind === 'content_approved') {
+    return <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-success" aria-hidden />
+  }
+  return (
+    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-border-strong" aria-hidden />
+  )
+}
+
+function ChannelPanel({
   product,
   marketplace,
 }: {
   product: Product
   marketplace: Marketplace
 }) {
-  const state = channelState(product, marketplace)
-  const ink = CHANNEL_INK[marketplace]
-  const title = effectiveTitle(product, marketplace)
+  const v = version(product, marketplace)
+  if (!v) return null
+
+  const titleInherited = isInherited(product, marketplace, 'title')
+  const descInherited = isInherited(product, marketplace, 'description')
 
   return (
-    <div className="bg-panel p-4">
-      <div className="flex items-center justify-between">
-        <span
-          className="font-mono font-semibold"
-          style={{ fontSize: 12, letterSpacing: '0.1em', color: ink }}
-        >
-          {CHANNEL_CODE[marketplace]}
-        </span>
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 9,
-            letterSpacing: '0.12em',
-            // A cor do canal identifica o canal; o estado fala em tinta
-            // neutra para os dois vocabularios nao se confundirem.
-            color: state === 'adapted' ? 'var(--ink-dim)' : 'var(--ink-faint)',
-          }}
-        >
-          {state === 'adapted'
-            ? 'ADAPTADO'
-            : state === 'inherited'
-              ? 'HERDANDO'
-              : 'SEM BASE'}
-        </span>
+    <div
+      id={`channel-${marketplace}`}
+      className="rounded-lg border border-border p-4 scroll-mt-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[13px] font-medium">
+            {MARKETPLACE_LABELS[marketplace]}
+          </span>
+          <ChannelStatusBadge status={v.status} />
+        </div>
+        {v.listingId ? (
+          <span className="font-mono text-[11px] text-text-tertiary">{v.listingId}</span>
+        ) : null}
       </div>
 
-      <div className="label mt-3">{MARKETPLACE_LABELS[marketplace]}</div>
+      {v.status === 'error' && v.errorMessage ? (
+        <p className="mt-3 flex items-start gap-2 rounded-md bg-danger-surface px-3 py-2 text-[13px] leading-snug">
+          <XCircle size={13} className="mt-0.5 shrink-0 text-danger" aria-hidden />
+          {v.errorMessage}
+        </p>
+      ) : null}
 
-      <p
-        className="mt-2"
-        style={{
-          fontSize: 13,
-          lineHeight: 1.45,
-          color: state === 'adapted' ? 'var(--ink)' : 'var(--ink-dim)',
-          // Herdando: o texto vem da camada de baixo, então é mostrado
-          // mais apagado — a ausência de camada própria é visível.
-          fontStyle: state === 'inherited' ? 'italic' : 'normal',
-        }}
-      >
-        {title}
-      </p>
+      {v.missingFields.length > 0 ? (
+        <p className="mt-3 flex items-start gap-2 rounded-md bg-warning-surface px-3 py-2 text-[13px] leading-snug">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0 text-warning" aria-hidden />
+          Falta {v.missingFields.join(' e ')}.
+        </p>
+      ) : null}
+
+      <dl className="mt-3 space-y-2.5">
+        <ChannelField
+          label="Título"
+          value={effectiveTitle(product, marketplace)}
+          inherited={titleInherited}
+          status={v.title?.status}
+        />
+        <ChannelField
+          label="Descrição"
+          value={effectiveDescription(product, marketplace) || '—'}
+          inherited={descInherited}
+          status={v.description?.status}
+          clamp
+        />
+        {marketplace === 'amazon' ? (
+          <div>
+            <dt className="text-[11px] text-text-secondary">
+              Bullet points{' '}
+              <span className="text-text-tertiary">
+                ({v.bulletPoints.length} de 5)
+              </span>
+            </dt>
+            <dd className="mt-1">
+              {v.bulletPoints.length === 0 ? (
+                <span className="text-[13px] text-text-tertiary">Nenhum informado.</span>
+              ) : (
+                <ul className="space-y-0.5">
+                  {v.bulletPoints.map((bullet) => (
+                    <li
+                      key={bullet}
+                      className="flex gap-1.5 text-[13px] leading-snug text-text-secondary"
+                    >
+                      <span aria-hidden>·</span>
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" disabled>
+          <Sparkles size={12} aria-hidden />
+          Adaptar com IA
+        </Button>
+        <Button size="sm" disabled>
+          <Plus size={12} aria-hidden />
+          Editar conteúdo
+        </Button>
+      </div>
     </div>
   )
 }
 
-/**
- * Faixa de imagens: vagas reais, não um contador.
- * O storage entra na etapa 6; até lá a vaga mostra o alt text.
- */
-function ImageStrip({ product }: { product: Product }) {
-  if (product.images.length === 0) {
-    return (
-      <div className="flex items-center gap-2">
-        <span
-          className="flex items-center justify-center border border-dashed border-rule-strong"
-          style={{ width: 34, height: 34 }}
-        >
-          <span className="label" style={{ fontSize: 9 }}>
-            +
-          </span>
-        </span>
-        <span className="label" style={{ color: 'var(--ink-faint)' }}>
-          sem foto
-        </span>
-      </div>
-    )
-  }
+function ChannelField({
+  label,
+  value,
+  inherited,
+  status,
+  clamp = false,
+}: {
+  label: string
+  value: string
+  inherited: boolean
+  status?: string
+  clamp?: boolean
+}) {
   return (
-    <div className="flex items-center gap-1.5">
-      {product.images.slice(0, 4).map((image, i) => (
-        <span
-          key={image.id}
-          title={image.altText ?? undefined}
-          className="flex items-center justify-center border bg-panel-raised"
-          style={{
-            width: 34,
-            height: 34,
-            borderColor: i === 0 ? 'var(--ink-dim)' : 'var(--rule-strong)',
-          }}
-        >
+    <div>
+      <dt className="flex items-center gap-2 text-[11px] text-text-secondary">
+        {label}
+        {inherited ? (
           <span
-            className="font-mono"
-            style={{ fontSize: 9, color: 'var(--ink-faint)' }}
+            className="rounded bg-surface-sunken px-1 py-0.5 text-[10px] text-text-tertiary"
+            title="Usando o conteúdo do produto base"
           >
-            {String(i + 1).padStart(2, '0')}
+            herdado da base
           </span>
-        </span>
-      ))}
-      <span
-        className="flex items-center justify-center border border-dashed border-rule-strong"
-        style={{ width: 34, height: 34 }}
+        ) : status === 'ai_generated' ? (
+          <span className="rounded bg-accent-surface px-1 py-0.5 text-[10px] text-accent-text">
+            gerado com IA
+          </span>
+        ) : null}
+      </dt>
+      <dd
+        className={`mt-0.5 text-[13px] leading-snug ${
+          inherited ? 'text-text-tertiary' : ''
+        } ${clamp ? 'line-clamp-2' : ''}`}
       >
-        <span className="label" style={{ fontSize: 9 }}>
-          +
-        </span>
-      </span>
+        {value}
+      </dd>
     </div>
   )
 }

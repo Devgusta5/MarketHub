@@ -1,87 +1,213 @@
 @import "tailwindcss";
 
-/* ───────────────────────────────────────────────────────────
-   DESPACHO — painel de partidas + cartão de embarque
-   Mundo escuro por padrão: operação, uso prolongado, sala com
-   luz artificial. O âmbar é reservado: significa "precisa de
-   ação" e nunca aparece como decoração.
-   ─────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   MarketHub — tokens
+   Conforme docs/BRIEFING.md §7 (paleta), §8 (tipografia),
+   §16 (movimento), §19 (tokens semânticos).
 
-:root {
-  /* Superfícies */
-  --deep: #0b0d11; /* fundo da página — fora do painel */
-  --panel: #15181f; /* o painel em si */
-  --panel-raised: #1c212b; /* linha em hover, campos */
-  --rule: #1f2530; /* réguas entre linhas */
-  --rule-strong: #2c3442; /* moldura do painel, divisórias de bloco */
+   Regra que atravessa tudo: a cor de destaque escolhida pelo
+   usuário controla marca, ação e foco — nunca o significado
+   de erro, sucesso, atenção ou pendência.
+   ═══════════════════════════════════════════════════════════ */
 
-  /* Tinta */
-  --ink: #f2f4f7; /* dado principal */
-  --ink-dim: #8a94a6; /* rótulo, metadado */
-  --ink-faint: #5b6577; /* ausência, placeholder */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-  /* Alerta — reservado para "precisa de ação" */
-  --alert: #ffc107;
-  --alert-ink: #1a1403; /* texto sobre âmbar sólido */
+:root,
+[data-theme="light"] {
+  --background: #fbfbfc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f4f5f7;
+  --border: #e4e7eb;
+  --border-strong: #d2d7de;
+  --text-primary: #15181c;
+  --text-secondary: #5c6672;
+  --text-tertiary: #8a94a0;
 
-  /* Canais: tinta própria e constante no sistema inteiro */
-  --ml: #ffe14d;
-  --shopee: #ff6b35;
-  --amazon: #4dd0e1;
+  /* Semânticas — independentes da cor de marca (§7) */
+  --success: #15803d;
+  --success-surface: #15803d14;
+  --warning: #b45309;
+  --warning-surface: #b4530914;
+  --danger: #b91c1c;
+  --danger-surface: #b91c1c14;
+  --info: #1d4ed8;
+  --info-surface: #1d4ed814;
 
-  /* Estado de preparo */
-  --ready: #4ade80;
+  --shadow-sm: 0 1px 2px #15181c0f;
+  --shadow-md: 0 4px 12px #15181c14;
+  --shadow-lg: 0 12px 32px #15181c1f;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --background: #0d0f11;
+  --surface: #15181c;
+  --surface-raised: #1c2025;
+  --surface-sunken: #101316;
+  --border: #2a3037;
+  --border-strong: #3a424b;
+  --text-primary: #f4f6f8;
+  --text-secondary: #a6afb8;
+  --text-tertiary: #727d88;
+
+  --success: #4ade80;
+  --success-surface: #4ade801f;
+  --warning: #fbbf24;
+  --warning-surface: #fbbf241f;
+  --danger: #f87171;
+  --danger-surface: #f871711f;
+  --info: #60a5fa;
+  --info-surface: #60a5fa1f;
+
+  --shadow-sm: 0 1px 2px #00000052;
+  --shadow-md: 0 4px 12px #0000005c;
+  --shadow-lg: 0 12px 32px #00000070;
 
   color-scheme: dark;
 }
 
+/* ── Cor de destaque (§7) ─────────────────────────────────
+   Laranja é o padrão. O atributo data-accent troca apenas os
+   elementos de marca. */
+
+:root,
+[data-accent="orange"] {
+  --accent: #f97316;
+  --accent-hover: #ea680c;
+  --accent-strong: #c2410c;
+  --accent-contrast: #ffffff;
+  --accent-surface: #f9731614;
+  --accent-border: #f9731645;
+}
+
+[data-accent="blue"] {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-strong: #1e40af;
+  --accent-contrast: #ffffff;
+  --accent-surface: #2563eb14;
+  --accent-border: #2563eb45;
+}
+
+[data-accent="violet"] {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-strong: #5b21b6;
+  --accent-contrast: #ffffff;
+  --accent-surface: #7c3aed14;
+  --accent-border: #7c3aed45;
+}
+
+[data-accent="green"] {
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-strong: #065f46;
+  --accent-contrast: #ffffff;
+  --accent-surface: #05966914;
+  --accent-border: #05966945;
+}
+
+[data-accent="teal"] {
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-strong: #115e59;
+  --accent-contrast: #ffffff;
+  --accent-surface: #0d948814;
+  --accent-border: #0d948845;
+}
+
+/* No tema escuro o laranja puro sobre grafite é vibrante demais
+   para texto pequeno (§17): clareia o traço, mantém o cheio. */
+[data-theme="dark"] {
+  --accent-text: color-mix(in oklab, var(--accent) 82%, white);
+}
+
+:root {
+  --accent-text: var(--accent-strong);
+}
+
+/* ── Densidade (§7) ─────────────────────────────────────── */
+
+:root,
+[data-density="comfortable"] {
+  --row-h: 56px;
+  --cell-y: 12px;
+}
+
+[data-density="compact"] {
+  --row-h: 42px;
+  --cell-y: 7px;
+}
+
 @theme inline {
-  --color-deep: var(--deep);
-  --color-panel: var(--panel);
-  --color-panel-raised: var(--panel-raised);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
-  --color-ink: var(--ink);
-  --color-ink-dim: var(--ink-dim);
-  --color-ink-faint: var(--ink-faint);
-  --color-alert: var(--alert);
-  --color-alert-ink: var(--alert-ink);
-  --color-ml: var(--ml);
-  --color-shopee: var(--shopee);
-  --color-amazon: var(--amazon);
-  --color-ready: var(--ready);
-  --font-sans: var(--font-display);
-  --font-mono: var(--font-data);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-text: var(--accent-text);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-border: var(--accent-border);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-card: var(--shadow-sm);
+  --shadow-pop: var(--shadow-md);
+  --shadow-modal: var(--shadow-lg);
+
+  /* §16: transições curtas, 120–220ms */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body {
-  background: var(--deep);
-  color: var(--ink);
-  /* Figuras tabulares em toda a interface: é um painel de dados,
-     os números têm que alinhar em coluna. */
+  background: var(--background);
+  color: var(--text-primary);
+  /* Tabelas de catálogo: números têm que alinhar em coluna (§8). */
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
 }
 
-/* ── Superfícies do navegador: parte do design, não defaults ── */
+/* ── Superfícies do navegador ─────────────────────────────── */
 
 ::selection {
-  background: var(--alert);
-  color: var(--alert-ink);
+  background: var(--accent-surface);
+  color: var(--text-primary);
 }
 
 ::placeholder {
-  color: var(--ink-faint);
+  color: var(--text-tertiary);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--rule-strong) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 *::-webkit-scrollbar-track {
@@ -89,52 +215,24 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--rule-strong);
-  border: 3px solid var(--deep);
-  border-radius: 0;
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  border-radius: 99px;
+  background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--ink-faint);
+  background: var(--text-tertiary);
+  background-clip: content-box;
 }
 
 :focus-visible {
-  outline: 2px solid var(--alert);
-  outline-offset: 1px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
-/* ── Vocabulário do mundo ── */
-
-/* Rótulo de coluna / campo: caixa alta, tracking aberto, pequeno.
-   É a etiqueta impressa do cartão. */
-.label {
-  font-family: var(--font-data);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-
-/* Linha perfurada entre segmentos do cartão de embarque. */
-.perforation {
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--rule-strong) 0 4px,
-    transparent 4px 9px
-  );
-  height: 1px;
-}
-
-.perforation-v {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    var(--rule-strong) 0 4px,
-    transparent 4px 9px
-  );
-  width: 1px;
-}
-
+/* §16/§17: respeitar preferência de movimento reduzido. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -142,5 +240,28 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Utilitários ──────────────────────────────────────────── */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 25%,
+    var(--border) 50%,
+    var(--surface-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }

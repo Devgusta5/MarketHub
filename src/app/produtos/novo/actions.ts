@@ -3,7 +3,10 @@
 import { redirect } from 'next/navigation'
 import { createProduct, skuExists } from '@/lib/store'
 
-export type NewProductState = { error: string | null }
+export type NewProductState = {
+  error: string | null
+  field: 'name' | 'sku' | null
+}
 
 export async function createProductAction(
   _prev: NewProductState,
@@ -14,13 +17,16 @@ export async function createProductAction(
   const sku = String(formData.get('sku') ?? '').trim()
 
   if (name.length < 3) {
-    return { error: 'O nome precisa ter pelo menos 3 caracteres.' }
+    return { error: 'O nome precisa ter pelo menos 3 caracteres.', field: 'name' }
   }
   if (!sku) {
-    return { error: 'Informe o SKU.' }
+    return { error: 'Informe o SKU do produto.', field: 'sku' }
   }
   if (await skuExists(sku)) {
-    return { error: `Já existe um produto com o SKU ${sku}.` }
+    return {
+      error: `Já existe um produto com o SKU ${sku}. Use outro identificador.`,
+      field: 'sku',
+    }
   }
 
   const product = await createProduct({ name, sku })

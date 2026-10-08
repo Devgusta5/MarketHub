@@ -62,9 +62,10 @@ ferramenta de cadastro comum faz isso.
 
 ## Capabilities and Constraints
 
-Confirmado no MVP: catálogo visual, ficha central do produto, upload de
-imagens, IA para título/descrição/tags, versões por marketplace (só conteúdo),
-histórico de alterações, login.
+Confirmado no MVP (ordem de prioridade em BRIEFING §20): catálogo com busca e
+filtros, página do produto com completude e pendências acionáveis, separação
+produto base × adaptação por canal, estados essenciais, design system base,
+temas claro/escuro, IA contextual.
 
 Fora do MVP, deliberadamente: integração com Bling, publicação real em qualquer
 marketplace, geração de vídeo, sistema fiscal, permissões por papel,
@@ -79,21 +80,43 @@ bucket privado desde a primeira migration.
 |---|---|
 | Produto base | A ficha central, fonte única de verdade |
 | Versão / canal | A adaptação do produto para um marketplace |
-| Herdando | Campo vazio no canal, usando o valor do produto base |
-| Adaptado | Campo preenchido especificamente para aquele canal |
-| Rascunho / Pronto | Estado de preparação do produto |
+| Herdado da base | Campo vazio no canal, usando o valor do produto base |
+| Completude | Quantas das 10 informações essenciais estão preenchidas |
+| Pendência | O que falta, dito de forma concreta e acionável |
+
+Estados, conforme BRIEFING §13 — três eixos independentes:
+
+- **Produto:** Rascunho · Incompleto · Em revisão · Completo
+- **Canal:** Não configurado · Com pendências · Pronto · Publicado · Erro
+- **Conteúdo:** Original · Gerado com IA · Editado · Aguardando aprovação · Aprovado
 
 ## Brand Commitments
 
-Nenhuma restrição de marca. Sem logo, cor obrigatória ou identidade herdada —
-confirmado pelo usuário. O nome é **MarketHub** (uma palavra, H maiúsculo), com
-*Catálogo Inteligente* como descritor do produto.
+Definidos em `docs/BRIEFING.md`, que é a autoridade de marca e direção:
 
-Voz: português do Brasil, direta, sem jargão de software. Rótulos são
-substantivos; botões são verbos no infinitivo; erros dizem o que fazer.
+- Nome **MarketHub** (uma palavra, H maiúsculo). No wordmark, "Hub" recebe a
+  cor de destaque; a leitura do nome continua imediata.
+- Direção estética: software operacional + SaaS premium + ferramenta de
+  produtividade. Referências de qualidade: Linear, Vercel, Stripe, Notion,
+  Shopify — nunca copiadas.
+- Grafite + laranja `#F97316` como assinatura, com temas claro, escuro e
+  sistema, e cor de destaque escolhível pelo usuário.
+- Tipografia Geist; iconografia Lucide.
+- A evitar: SaaS genérico de cards arredondados e gradientes, neon/cyberpunk,
+  dashboard congestionado de gráficos inúteis, carrinho/sacola como símbolo,
+  IA como protagonista.
+- Tagline em exploração: "Centralize. Otimize. Publique."
+
+Voz: direta, profissional, clara, objetiva e contemporânea. Rótulos são
+substantivos; botões são verbos; erros dizem a causa e o próximo passo.
+
+**Ainda em aberto:** símbolo próprio (letra M + ideia de hub). Por ora só o
+wordmark, por decisão do usuário.
 
 ## Evidence on Hand
 
+- `docs/BRIEFING.md` — briefing de branding, UI/UX e frontend. **Autoridade de
+  direção visual e de experiência.**
 - `plano-central-produtos-conteudo(1).md` — documento de concepção do usuário.
 - `PLANO.md` — plano de execução do MVP (escopo, modelo de dados, etapas).
 - Produtos de exemplo em `src/lib/store.ts` são **fictícios plausíveis**, criados
