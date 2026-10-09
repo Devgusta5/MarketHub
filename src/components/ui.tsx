@@ -1,91 +1,182 @@
 /**
- * Componentes compartilhados — briefing §15.
- * Cada um define seus estados; nada de valores avulsos.
+ * Design system do markethub.
+ * Portado do protótipo v2; §5.2 e §15 do documento mestre.
  */
+'use client'
+
 import type { ComponentProps, ReactNode } from 'react'
-import Link from 'next/link'
 import {
-  AlertTriangle,
-  CheckCircle2,
-  CircleDashed,
-  CircleDot,
-  Clock,
-  Sparkles,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react'
-import {
-  CHANNEL_STATUS_LABELS,
-  CONTENT_STATUS_LABELS,
-  PRODUCT_STATUS_LABELS,
-  type ChannelStatus,
-  type ContentStatus,
-  type ProductStatus,
-} from '@/lib/types'
+  CREATIVE_STATE_LABELS,
+  CHANNEL_RELEASE_LABELS,
+  CONFIDENCE_LABELS,
+  PRODUCT_STATE_LABELS,
+  type ChannelReleaseState,
+  type Confidence,
+  type CreativeState,
+  type ProductState,
+} from '@/lib/domain'
 
 /* ── Botão ───────────────────────────────────────────────── */
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
-type ButtonSize = 'sm' | 'md'
+type Variant = 'primary' | 'soft' | 'outline' | 'ghost'
 
-const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50'
+const BTN =
+  'inline-flex items-center justify-center gap-2 rounded-xl px-4 font-semibold whitespace-nowrap transition-[transform,background,opacity] duration-150 active:scale-[.96] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100'
 
-const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    'bg-accent text-accent-contrast hover:bg-accent-hover disabled:hover:bg-accent',
-  secondary:
-    'border border-border bg-surface text-text-primary hover:bg-surface-sunken hover:border-border-strong',
-  ghost: 'text-text-secondary hover:bg-surface-sunken hover:text-text-primary',
-  danger: 'bg-danger text-white hover:opacity-90',
-}
-
-const BUTTON_SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px]',
-  md: 'h-9 px-4 text-sm',
+const VARIANTS: Record<Variant, string> = {
+  primary: 'text-white hover:-translate-y-px disabled:hover:translate-y-0',
+  soft: 'bg-soft text-text hover:-translate-y-px disabled:hover:translate-y-0',
+  outline: 'border border-line text-text hover:bg-soft',
+  ghost: 'text-sub hover:bg-soft hover:text-text',
 }
 
 export function Button({
-  variant = 'secondary',
-  size = 'md',
+  variant = 'soft',
+  small = false,
+  full = false,
   className = '',
+  style,
   ...props
-}: ComponentProps<'button'> & { variant?: ButtonVariant; size?: ButtonSize }) {
+}: ComponentProps<'button'> & { variant?: Variant; small?: boolean; full?: boolean }) {
   return (
     <button
-      className={`${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${className}`}
+      className={`${BTN} ${VARIANTS[variant]} ${
+        small ? 'min-h-8 px-3 text-xs' : 'min-h-[39px] text-sm'
+      } ${full ? 'w-full' : ''} ${className}`}
+      style={
+        variant === 'primary'
+          ? {
+              background: 'var(--accent-gradient)',
+              boxShadow: '0 5px 16px rgba(255,106,0,.18)',
+              ...style,
+            }
+          : style
+      }
       {...props}
     />
   )
 }
 
-export function ButtonLink({
-  variant = 'secondary',
-  size = 'md',
+export function IconButton({
+  label,
   className = '',
   ...props
-}: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: ButtonSize }) {
+}: ComponentProps<'button'> & { label: string }) {
   return (
-    <Link
-      className={`${BUTTON_BASE} ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${className}`}
+    <button
+      title={label}
+      aria-label={label}
+      className={`inline-flex size-9 items-center justify-center rounded-xl text-sub transition-colors hover:bg-soft hover:text-text ${className}`}
       {...props}
     />
   )
+}
+
+/* ── Chip ────────────────────────────────────────────────── */
+
+type Tone = 'neutral' | 'orange' | 'green' | 'amber' | 'red'
+
+const TONES: Record<Tone, string> = {
+  neutral: 'bg-soft text-sub',
+  orange: 'text-[var(--orange)]',
+  green: 'text-[var(--ok)]',
+  amber: 'text-[var(--warn)]',
+  red: 'text-[var(--bad)]',
+}
+
+const TONE_BG: Record<Tone, string | undefined> = {
+  neutral: undefined,
+  orange: 'var(--orange-light)',
+  green: 'var(--ok-soft)',
+  amber: 'var(--warn-soft)',
+  red: 'var(--bad-soft)',
+}
+
+export function Chip({
+  tone = 'neutral',
+  children,
+  title,
+}: {
+  tone?: Tone
+  children: ReactNode
+  title?: string
+}) {
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${TONES[tone]}`}
+      style={{ background: TONE_BG[tone] }}
+    >
+      {children}
+    </span>
+  )
+}
+
+/* ── Estados (§15.2) ─────────────────────────────────────── */
+
+const PRODUCT_TONE: Record<ProductState, Tone> = {
+  draft: 'neutral',
+  analyzing: 'orange',
+  awaiting_identity: 'amber',
+  registered: 'neutral',
+  producing: 'orange',
+  review: 'amber',
+  adjust: 'red',
+  approved: 'green',
+}
+
+export function ProductStateChip({ state }: { state: ProductState }) {
+  return <Chip tone={PRODUCT_TONE[state]}>{PRODUCT_STATE_LABELS[state]}</Chip>
+}
+
+const CREATIVE_TONE: Record<CreativeState, Tone> = {
+  generating: 'orange',
+  review: 'amber',
+  approved: 'green',
+  adjust: 'red',
+  error: 'red',
+}
+
+/** Eixo 1: qualidade do material. */
+export function CreativeChip({ state }: { state: CreativeState }) {
+  return <Chip tone={CREATIVE_TONE[state]}>{CREATIVE_STATE_LABELS[state]}</Chip>
+}
+
+const RELEASE_TONE: Record<ChannelReleaseState, Tone> = {
+  not_evaluated: 'neutral',
+  pending: 'amber',
+  ready: 'green',
+  needs_adaptation: 'amber',
+  blocked: 'red',
+}
+
+/** Eixo 2: liberação para um canal. Diferente da aprovação criativa. */
+export function ReleaseChip({ state }: { state: ChannelReleaseState }) {
+  return <Chip tone={RELEASE_TONE[state]}>{CHANNEL_RELEASE_LABELS[state]}</Chip>
+}
+
+const CONFIDENCE_TONE: Record<Confidence, Tone> = {
+  confirmed: 'green',
+  sourced: 'green',
+  probable: 'amber',
+  needs_check: 'red',
+}
+
+/** §7.2: nunca apresentar inferência da IA como fato. */
+export function ConfidenceChip({ level }: { level: Confidence }) {
+  return <Chip tone={CONFIDENCE_TONE[level]}>{CONFIDENCE_LABELS[level]}</Chip>
 }
 
 /* ── Superfícies ─────────────────────────────────────────── */
 
-export function Card({
+export function Panel({
   children,
   className = '',
-  padded = true,
   ...props
-}: ComponentProps<'section'> & { padded?: boolean }) {
+}: ComponentProps<'section'>) {
   return (
     <section
-      className={`rounded-xl border border-border bg-surface shadow-card ${
-        padded ? 'p-5' : ''
-      } ${className}`}
+      className={`rounded-[19px] border border-line bg-solid p-5 ${className}`}
       {...props}
     >
       {children}
@@ -93,196 +184,133 @@ export function Card({
   )
 }
 
-export function SectionHeading({
-  children,
+export function Kpi({ value, label }: { value: ReactNode; label: string }) {
+  return (
+    <div className="rounded-2xl bg-soft p-4">
+      <strong className="block text-[22px] tracking-[-.04em]">{value}</strong>
+      <span className="text-[11px] text-sub">{label}</span>
+    </div>
+  )
+}
+
+export function Eyebrow({ children }: { children: ReactNode }) {
+  return <div className="eyebrow">{children}</div>
+}
+
+export function SectionHead({
+  title,
   hint,
   action,
 }: {
-  children: ReactNode
+  title: string
   hint?: string
   action?: ReactNode
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="mb-4 flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold tracking-tight">{children}</h2>
-        {hint ? <p className="mt-1 text-[13px] text-text-secondary">{hint}</p> : null}
+        <h3 className="text-[17px] tracking-[-.025em]">{title}</h3>
+        {hint ? <p className="mt-1 text-xs leading-relaxed text-sub">{hint}</p> : null}
       </div>
       {action}
     </div>
   )
 }
 
-/* ── Badges de estado (§13) ──────────────────────────────────
-   Nunca apenas cor: cada badge tem ícone e texto. */
-
-type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
-
-const TONES: Record<Tone, string> = {
-  neutral: 'bg-surface-sunken text-text-secondary border-border',
-  info: 'bg-info-surface text-info border-transparent',
-  success: 'bg-success-surface text-success border-transparent',
-  warning: 'bg-warning-surface text-warning border-transparent',
-  danger: 'bg-danger-surface text-danger border-transparent',
-  accent: 'bg-accent-surface text-accent-text border-transparent',
-}
-
-export function Badge({
-  tone = 'neutral',
-  icon: Icon,
-  children,
-  title,
-}: {
-  tone?: Tone
-  icon?: LucideIcon
-  children: ReactNode
-  title?: string
-}) {
+/** Caixa de aviso em laranja — usada para alertas de demonstração. */
+export function Hint({ children }: { children: ReactNode }) {
   return (
-    <span
-      title={title}
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${TONES[tone]}`}
+    <div
+      className="rounded-xl p-3 text-xs leading-relaxed text-text"
+      style={{ background: 'var(--orange-light)' }}
     >
-      {Icon ? <Icon size={12} strokeWidth={2.25} aria-hidden /> : null}
       {children}
-    </span>
+    </div>
   )
 }
 
-const PRODUCT_TONE: Record<ProductStatus, { tone: Tone; icon: LucideIcon }> = {
-  draft: { tone: 'neutral', icon: CircleDashed },
-  incomplete: { tone: 'warning', icon: AlertTriangle },
-  in_review: { tone: 'info', icon: Clock },
-  complete: { tone: 'success', icon: CheckCircle2 },
-}
-
-export function ProductStatusBadge({ status }: { status: ProductStatus }) {
-  const { tone, icon } = PRODUCT_TONE[status]
+/** "3 de 6 prontas" — §12.3 prefere contagem real a porcentagem inventada. */
+export function Progress({ done, total }: { done: number; total: number }) {
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100)
   return (
-    <Badge tone={tone} icon={icon}>
-      {PRODUCT_STATUS_LABELS[status]}
-    </Badge>
+    <div
+      className="h-1.5 overflow-hidden rounded-full bg-soft"
+      role="progressbar"
+      aria-valuenow={done}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-label={`${done} de ${total}`}
+    >
+      <div
+        className="h-full rounded-full transition-[width] duration-300"
+        style={{ width: `${pct}%`, background: 'var(--orange)' }}
+      />
+    </div>
   )
 }
 
-const CHANNEL_TONE: Record<ChannelStatus, { tone: Tone; icon: LucideIcon }> = {
-  not_configured: { tone: 'neutral', icon: CircleDashed },
-  has_issues: { tone: 'warning', icon: AlertTriangle },
-  ready: { tone: 'info', icon: CircleDot },
-  published: { tone: 'success', icon: CheckCircle2 },
-  error: { tone: 'danger', icon: XCircle },
-}
-
-export function ChannelStatusBadge({ status }: { status: ChannelStatus }) {
-  const { tone, icon } = CHANNEL_TONE[status]
-  return (
-    <Badge tone={tone} icon={icon}>
-      {CHANNEL_STATUS_LABELS[status]}
-    </Badge>
-  )
-}
-
-const CONTENT_TONE: Record<ContentStatus, { tone: Tone; icon?: LucideIcon }> = {
-  original: { tone: 'neutral' },
-  ai_generated: { tone: 'accent', icon: Sparkles },
-  edited: { tone: 'neutral' },
-  awaiting_approval: { tone: 'warning', icon: Clock },
-  approved: { tone: 'success', icon: CheckCircle2 },
-}
-
-export function ContentStatusBadge({ status }: { status: ContentStatus }) {
-  const { tone, icon } = CONTENT_TONE[status]
-  return (
-    <Badge tone={tone} icon={icon}>
-      {CONTENT_STATUS_LABELS[status]}
-    </Badge>
-  )
-}
-
-/* ── Campo rotulado ──────────────────────────────────────── */
+/* ── Formulário ──────────────────────────────────────────── */
 
 export function Field({
   label,
-  value,
-  mono = false,
-  empty = '—',
+  hint,
+  children,
 }: {
   label: string
-  value: string | null | undefined
-  mono?: boolean
-  empty?: string
+  hint?: string
+  children: ReactNode
 }) {
-  const filled = Boolean(value && value.trim())
   return (
-    <div>
-      <dt className="text-xs text-text-secondary">{label}</dt>
-      <dd
-        className={`mt-1 text-sm ${mono ? 'font-mono text-[13px]' : ''} ${
-          filled ? 'text-text-primary' : 'text-text-tertiary'
-        }`}
-      >
-        {filled ? value : empty}
-      </dd>
-    </div>
+    <label className="mb-3 flex flex-col gap-[7px]">
+      <span className="text-xs font-semibold text-sub">{label}</span>
+      {children}
+      {hint ? <span className="text-[11px] text-sub">{hint}</span> : null}
+    </label>
   )
 }
 
-/* ── Estados de tela (§18) ───────────────────────────────── */
+const CONTROL =
+  'w-full rounded-xl border border-line bg-soft px-3 py-3 text-text outline-none transition-colors focus:border-[rgba(255,106,0,.5)]'
 
-export function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: LucideIcon
-  title: string
-  description: string
-  action?: ReactNode
-}) {
-  return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed border-border px-6 py-14 text-center">
-      <Icon size={22} className="text-text-tertiary" aria-hidden />
-      <p className="mt-3 text-sm font-medium">{title}</p>
-      <p className="mt-1.5 max-w-[46ch] text-[13px] leading-relaxed text-text-secondary">
-        {description}
-      </p>
-      {action ? <div className="mt-5">{action}</div> : null}
-    </div>
-  )
+export function Input(props: ComponentProps<'input'>) {
+  return <input className={`${CONTROL} min-h-[41px]`} {...props} />
 }
 
-export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`skeleton rounded-md ${className}`} aria-hidden />
+export function Textarea(props: ComponentProps<'textarea'>) {
+  return <textarea className={`${CONTROL} min-h-24 resize-y leading-relaxed`} {...props} />
 }
 
-/** Barra de completude — "8 de 10 informações essenciais" (§12). */
-export function ProgressBar({
+export function Select(props: ComponentProps<'select'>) {
+  return <select className={`${CONTROL} min-h-[41px]`} {...props} />
+}
+
+/** Alternância de visão: Galeria/Lista, Por material/Por marketplace. */
+export function Segmented<T extends string>({
   value,
-  total,
-  tone = 'accent',
+  options,
+  onChange,
 }: {
-  value: number
-  total: number
-  tone?: 'accent' | 'success'
+  value: T
+  options: Array<{ value: T; label: string }>
+  onChange: (v: T) => void
 }) {
-  const percent = total === 0 ? 0 : Math.round((value / total) * 100)
   return (
-    <div
-      className="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken"
-      role="progressbar"
-      aria-valuenow={value}
-      aria-valuemin={0}
-      aria-valuemax={total}
-      aria-label={`${value} de ${total} informações essenciais`}
-    >
-      <div
-        className="h-full rounded-full transition-[width] duration-200"
-        style={{
-          width: `${percent}%`,
-          background: tone === 'success' ? 'var(--success)' : 'var(--accent)',
-        }}
-      />
+    <div className="inline-flex gap-[3px] rounded-xl border border-line bg-soft p-[3px]">
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            aria-pressed={active}
+            className={`rounded-lg px-3 py-[7px] text-[11px] transition-colors ${
+              active ? 'bg-solid font-bold text-text shadow-soft' : 'text-sub hover:text-text'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

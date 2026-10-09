@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:artwork": "node scripts/build-artwork.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.53.0",
