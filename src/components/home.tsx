@@ -10,6 +10,7 @@
  * mantendo a mesma camada de acessibilidade e os mesmos gestos.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CreationWindow } from './creation'
 import { ActivityTrigger, Dock, type DockKey } from './dock'
 import { HomeTop } from './home-top'
 import { Icon } from './icon'
@@ -24,9 +25,15 @@ import {
 } from './panels'
 import { SearchBar } from './search'
 import { Universe } from './universe'
-import { clientName, seedProducts } from '@/lib/seed'
+import { CLIENTS, clientName, seedProducts, spiralCells } from '@/lib/seed'
 import { L } from '@/lib/labels'
-import type { Job, Product } from '@/lib/domain'
+import { emptyCreation, packageSummary, plannedMethod, type Creation } from '@/lib/creation'
+import {
+  MATERIAL_LABELS,
+  type Job,
+  type Material,
+  type Product,
+} from '@/lib/domain'
 
 export type Filters = { client: string; marketplace: string; state: string }
 
@@ -43,8 +50,9 @@ type Overlay =
   | { kind: 'preview'; productId: string }
 
 export function HomeScreen() {
-  const [products] = useState<Product[]>(() => seedProducts())
-  const [jobs] = useState<Job[]>([])
+  const [products, setProducts] = useState<Product[]>(() => seedProducts())
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [creation, setCreation] = useState<Creation | null>(null)
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' })
@@ -85,6 +93,129 @@ export function HomeScreen() {
     [visibleIds, say],
   )
 
+  const patchCreation = useCallback((patch: Partial<Creation>) => {
+    setCreation((c) => (c ? { ...c, ...patch } : c))
+  }, [])
+
+  /**
+   * Passo 6 do §7.1: identidade e empresa confirmadas criam a ficha
+   * definitiva, e é NESTE momento que a bolinha aparece na Home.
+   *
+   * A célula vem da primeira posição livre da espiral, então o produto
+   * novo não embaralha as bolinhas existentes (§6.2).
+   */
+  const confirmIdentity = useCallback(() => {
+    if (!creation) return
+    const id = `prod-new-${Date.now().toString(36)}`
+
+    // O updater não pode criar o produto: o React o executa duas vezes
+    // em modo estrito e nasceriam duas bolinhas. A escrita acontece aqui,
+    // uma vez, e a célula sai da espiral a partir do tamanho atual.
+    setProducts((list) => {
+      if (list.some((p) => p.id === id)) return list
+      const cells = spiralCells(list.length + 1)
+      const product: Product = {
+        id,
+        clientId: creation.clientId,
+        name: creation.name.trim(),
+        sku: creation.sku.trim() || `NOVO-${list.length + 1}`,
+        category: creation.category,
+        artworkKind: '',
+        imageUrl: creation.imageDataUrl,
+        state: 'registered',
+        marketplaces: creation.marketplaces,
+        materials: [],
+        content: {},
+        attributes: {},
+        video: 'none',
+        createdAt: new Date().toISOString(),
+        cell: cells[list.length],
+      }
+      return [...list, product]
+    })
+
+    setCreation((c) => (c ? { ...c, stage: 'package', productId: id } : c))
+    say('Identidade confirmada: a bolinha apareceu na Home.')
+  }, [creation, say])
+
+  /**
+   * Passo 8: autorização de produção. Separada da identidade de
+   * propósito — confirmar o que é o produto não autoriza gastar.
+   */
+  const authorize = useCallback(() => {
+    const c = creation
+    if (!c || !c.productId) return
+    const productId = c.productId
+
+    if (c.profile === 'register') {
+      setCreation((cur) => (cur ? { ...cur, stage: 'done' } : cur))
+      say('Produto cadastrado. Nenhuma geração foi disparada.')
+      return
+    }
+
+    {
+      const materials: Material[] = c.selectedMaterials.map((kind, i) => {
+        const plan = plannedMethod(kind, c.profile)
+        const mid = `mat-${productId}-${i}`
+        return {
+          id: mid,
+          kind,
+          label: MATERIAL_LABELS[kind],
+          method: plan.paid
+            ? c.profile === 'premium'
+              ? 'ai_premium'
+              : 'ai_economic'
+            : kind === 'cover'
+              ? 'reuse'
+              : 'template',
+          creative: 'generating',
+          release: {},
+          activeVersionId: `${mid}-v1`,
+          versions: [
+            {
+              id: `${mid}-v1`,
+              parentId: null,
+              version: 1,
+              createdAt: new Date().toISOString(),
+              method: plan.paid ? 'ai_economic' : 'template',
+            },
+          ],
+        }
+      })
+
+      setProducts((list) =>
+        list.map((p) =>
+          p.id === productId ? { ...p, materials, state: 'producing' } : p,
+        ),
+      )
+
+      const summary = packageSummary(c)
+      const jobId = `job-${Date.now().toString(36)}`
+      setJobs((list) =>
+        list.some((j) => j.id === jobId)
+          ? list
+          : [
+              ...list,
+              {
+                id: jobId,
+                name: c.name.trim(),
+                productId,
+                kind: 'generation',
+                state: 'processing',
+                priority: 'normal',
+                done: 0,
+                total: materials.length,
+                createdAt: new Date().toISOString(),
+                estimatedCost: summary.paid * 18,
+              },
+            ],
+      )
+
+      setCreation((cur) => (cur ? { ...cur, stage: 'done' } : cur))
+      say('Produção autorizada. Acompanhe em Atividades.')
+    }
+  }, [creation, say])
+
   function onDock(key: DockKey) {
     if (key === 'home') {
       setOverlay({ kind: 'none' })
@@ -93,7 +224,9 @@ export function HomeScreen() {
     }
     if (key === 'create') {
       setOverlay({ kind: 'none' })
-      say('Nova criação entra na próxima etapa do porte.')
+      // §8: se já existe uma criação em andamento, restaura em vez de
+      // começar outra e perder o rascunho.
+      setCreation((c) => (c ? { ...c, minimized: false } : emptyCreation(CLIENTS[0].id)))
       return
     }
     setOverlay({ kind: key === 'clients' ? 'clients' : key === 'tools' ? 'tools' : 'settings' })
@@ -111,6 +244,63 @@ export function HomeScreen() {
     setOverlay({ kind: 'none' })
     say('O Workspace do produto entra na próxima etapa do porte.')
   }
+
+  // Análise simulada: 1,9s e o produto fica aguardando confirmação.
+  // §8: termina em "aguardando confirmação", nunca começa a gerar sozinho.
+  useEffect(() => {
+    if (creation?.stage !== 'analyzing') return
+    const t = setTimeout(() => {
+      patchCreation({ stage: 'confirm' })
+      say('Análise concluída. Confirme a identidade do produto.')
+    }, 1900)
+    return () => clearTimeout(t)
+  }, [creation?.stage, patchCreation, say])
+
+  // Progresso das gerações. §12.3: conta materiais prontos, não
+  // porcentagem inventada, e cada um fica disponível assim que termina.
+  useEffect(() => {
+    if (!jobs.some((j) => j.state === 'processing')) return
+    const timer = setInterval(() => {
+      setJobs((list) =>
+        list.map((job) => {
+          if (job.state !== 'processing') return job
+          const done = job.done + 1
+          if (done >= job.total) {
+            setProducts((ps) =>
+              ps.map((p) =>
+                p.id === job.productId
+                  ? {
+                      ...p,
+                      state: 'review',
+                      materials: p.materials.map((m) => ({
+                        ...m,
+                        creative: 'review' as const,
+                      })),
+                    }
+                  : p,
+              ),
+            )
+            return { ...job, done: job.total, state: 'done' as const }
+          }
+          // Material pronto já aparece revisável, sem esperar o pacote.
+          setProducts((ps) =>
+            ps.map((p) =>
+              p.id === job.productId
+                ? {
+                    ...p,
+                    materials: p.materials.map((m, i) =>
+                      i < done ? { ...m, creative: 'review' as const } : m,
+                    ),
+                  }
+                : p,
+            ),
+          )
+          return { ...job, done }
+        }),
+      )
+    }, 1400)
+    return () => clearInterval(timer)
+  }, [jobs])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -207,6 +397,29 @@ export function HomeScreen() {
           product={products.find((p) => p.id === overlay.productId)!}
           onClose={close}
           onSay={say}
+        />
+      ) : null}
+
+      {creation ? (
+        <CreationWindow
+          creation={creation}
+          onChange={patchCreation}
+          onMinimize={() => {
+            patchCreation({ minimized: true })
+            say('Janela minimizada. O trabalho continua disponível.')
+          }}
+          onRestore={() => patchCreation({ minimized: false })}
+          onConfirmIdentity={confirmIdentity}
+          onAuthorize={authorize}
+          onFinish={(openWorkspace) => {
+            const id = creation.productId
+            setCreation(null)
+            if (openWorkspace && id) {
+              say('O Workspace do produto entra na próxima etapa do porte.')
+            } else if (id) {
+              setFocusId(id)
+            }
+          }}
         />
       ) : null}
 

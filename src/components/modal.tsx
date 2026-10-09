@@ -109,7 +109,9 @@ export function Toast({ message }: { message: string | null }) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-[108px] left-1/2 z-[100] flex max-w-[calc(100vw-30px)] -translate-x-1/2 items-center gap-2.5 rounded-[15px] bg-text px-4 py-3 text-xs text-bg shadow-deep"
+      // Fica acima do Dock e abaixo do topo; a janela de criação cresce
+      // até o rodapé, então o canto evita cobrir os botões dela.
+      className="fixed right-6 bottom-[108px] z-[100] flex max-w-[min(420px,calc(100vw-30px))] items-center gap-2.5 rounded-[15px] bg-text px-4 py-3 text-xs text-bg shadow-deep max-[800px]:right-3 max-[800px]:bottom-[140px]"
     >
       <Icon name="info" size={17} />
       {message}

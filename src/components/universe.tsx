@@ -244,7 +244,12 @@ function Bubble({
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.imageUrl} alt="" className="size-full object-contain" />
-        ) : null}
+        ) : (
+          // §6.2: sem foto nem capa, placeholder neutro — nunca um vazio.
+          <span className="grid size-full place-items-center text-[#9aa0a6]">
+            <Icon name="image" size={26} />
+          </span>
+        )}
         {needsWork ? (
           <span
             className="absolute top-[3px] right-[2px] flex size-4 items-center justify-center rounded-full text-[9px] text-white"
