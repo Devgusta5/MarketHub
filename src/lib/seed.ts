@@ -318,7 +318,45 @@ function marketsFor(index: number): Marketplace[] {
   return ['mercado_livre', 'amazon']
 }
 
+/**
+ * Modo de carga para o benchmark do §6.9.
+ *
+ * `?bench=3000` repete os 24 produtos até o total pedido, para medir a
+ * malha com volume real. Só funciona em desenvolvimento e nunca entra
+ * no caminho normal — é instrumento de medida, não dado.
+ */
+function benchCount(): number {
+  if (typeof window === 'undefined') return 0
+  const n = Number(new URLSearchParams(window.location.search).get('bench'))
+  return Number.isFinite(n) && n > ROWS.length ? Math.min(n, 5000) : 0
+}
+
 export function seedProducts(): Product[] {
+  const target = benchCount()
+  if (target > 0) {
+    const cells = spiralCells(target)
+    return Array.from({ length: target }, (_, i) => {
+      const row = ROWS[i % ROWS.length]
+      return {
+        id: `prod-${i}`,
+        clientId: row.client,
+        name: `${row.name} #${i + 1}`,
+        sku: `${row.sku}-${i}`,
+        category: row.category,
+        artworkKind: row.kind,
+        imageUrl: artwork(row.kind),
+        state: STATES[i % STATES.length],
+        marketplaces: marketsFor(i),
+        materials: [],
+        content: {},
+        attributes: {},
+        video: 'none' as const,
+        createdAt: madeAt(i % ROWS.length),
+        cell: cells[i],
+      }
+    })
+  }
+
   const cells = spiralCells(ROWS.length)
   return ROWS.map((row, i) => ({
     id: `prod-${i}`,

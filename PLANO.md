@@ -121,6 +121,32 @@ ou cobrança real onde há apenas demonstração.
 
 ---
 
+## 5b. Benchmark da Home (§6.9)
+
+Medido no Edge, 1440×900, com `?bench=<n>` repetindo os produtos demo.
+FPS durante pan contínuo de 60 quadros.
+
+| Produtos | FPS | Memória | Nós no DOM |
+|---|---|---|---|
+| 24 | 60 | 20 MB | 24 |
+| 500 | 51 | 27 MB | 159 |
+| 3.000 | 43 | 52 MB | 159 |
+
+### O que o benchmark ensinou
+
+A primeira versão em WebGL deu **2 FPS com 3.000 produtos** — pior que o
+DOM. Três causas, encontradas medindo e não adivinhando:
+
+1. **Um `Graphics` por bolinha.** Milhares de geometrias distintas, cada
+   uma com sua máscara circular. Trocado por sprite de uma textura única
+   compartilhada: 6 → 60 FPS parado.
+2. **Camada DOM sem virtualização.** 3.000 botões reais no pan. Agora só
+   entram os que estão no viewport, com margem para o foco por teclado.
+3. **`products.find()` por nó a cada quadro.** Virou índice por id.
+
+Fica registrado porque a lição é geral: *trocar DOM por WebGL não é
+ganho automático*. O gargalo mudou de lugar, não desapareceu.
+
 ## 6. Riscos
 
 | Risco | Mitigação |
