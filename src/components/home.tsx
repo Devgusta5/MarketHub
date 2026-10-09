@@ -25,9 +25,11 @@ import {
 } from './panels'
 import { SearchBar } from './search'
 import { Universe } from './universe'
+import { Workspace } from './workspace'
 import { CLIENTS, clientName, seedProducts, spiralCells } from '@/lib/seed'
 import { L } from '@/lib/labels'
 import { emptyCreation, packageSummary, plannedMethod, type Creation } from '@/lib/creation'
+import { closeTab, openTab, type Tab, type WsSection } from '@/lib/workspace'
 import {
   MATERIAL_LABELS,
   type Job,
@@ -53,6 +55,8 @@ export function HomeScreen() {
   const [products, setProducts] = useState<Product[]>(() => seedProducts())
   const [jobs, setJobs] = useState<Job[]>([])
   const [creation, setCreation] = useState<Creation | null>(null)
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [activeTab, setActiveTab] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' })
@@ -92,6 +96,32 @@ export function HomeScreen() {
     },
     [visibleIds, say],
   )
+
+  /** §13.1: abrir produto cria ou foca a aba — nunca duplica. */
+  const openProduct = useCallback((productId: string, section?: WsSection) => {
+    setTabs((list) => {
+      const next = openTab(list, productId, section)
+      setActiveTab(next.activeId)
+      return next.tabs
+    })
+    setOverlay({ kind: 'none' })
+    setCreation((c) => (c ? { ...c, minimized: true } : c))
+  }, [])
+
+  const patchTab = useCallback(
+    (patch: Partial<Tab>) => {
+      setTabs((list) =>
+        list.map((t) => (t.productId === activeTab ? { ...t, ...patch } : t)),
+      )
+    },
+    [activeTab],
+  )
+
+  const patchProduct = useCallback((productId: string, patch: Partial<Product>) => {
+    setProducts((list) =>
+      list.map((p) => (p.id === productId ? { ...p, ...patch } : p)),
+    )
+  }, [])
 
   const patchCreation = useCallback((patch: Partial<Creation>) => {
     setCreation((c) => (c ? { ...c, ...patch } : c))
@@ -242,7 +272,8 @@ export function HomeScreen() {
       return
     }
     setOverlay({ kind: 'none' })
-    say('O Workspace do produto entra na próxima etapa do porte.')
+    openProduct(products[0].id, tool === 'content' ? 'content' : tool === 'fiscal' ? 'fiscal' : tool === 'video' ? 'video' : 'images')
+    say('Ferramenta aberta num produto de demonstração.')
   }
 
   // Análise simulada: 1,9s e o produto fica aguardando confirmação.
@@ -348,15 +379,15 @@ export function HomeScreen() {
         onReady={(fn) => (recenterRef.current = fn)}
       />
 
-      <HomeTop onProfile={() => setOverlay({ kind: 'profile' })} />
+      {activeTab ? null : <HomeTop onProfile={() => setOverlay({ kind: 'profile' })} />}
 
-      <SearchBar
+      {activeTab ? null : <SearchBar
         inputRef={searchRef}
         products={products}
         filters={filters}
         onFilters={setFilters}
         onPick={reveal}
-      />
+      />}
 
       <Dock active={dockActive} onSelect={onDock} />
       <ActivityTrigger
@@ -386,7 +417,9 @@ export function HomeScreen() {
         <ActivitiesPanel
           jobs={jobs}
           onClose={close}
-          onOpenJob={() => say('O Workspace entra na próxima etapa.')}
+          onOpenJob={(job) => {
+            if (job.productId) openProduct(job.productId)
+          }}
         />
       ) : null}
 
@@ -396,7 +429,7 @@ export function HomeScreen() {
         <ProductPreview
           product={products.find((p) => p.id === overlay.productId)!}
           onClose={close}
-          onSay={say}
+          onOpen={() => openProduct(overlay.productId)}
         />
       ) : null}
 
@@ -415,11 +448,33 @@ export function HomeScreen() {
             const id = creation.productId
             setCreation(null)
             if (openWorkspace && id) {
-              say('O Workspace do produto entra na próxima etapa do porte.')
+              openProduct(id)
             } else if (id) {
               setFocusId(id)
             }
           }}
+        />
+      ) : null}
+
+      {/* O Workspace cobre a Home, mas o Dock continua visível (§6.6). */}
+      {activeTab ? (
+        <Workspace
+          products={products}
+          tabs={tabs}
+          activeId={activeTab}
+          onPatchTab={patchTab}
+          onFocusTab={setActiveTab}
+          onCloseTab={(id) => {
+            // §13.1: fechar aba não apaga produto nem cancela tarefa.
+            setTabs((list) => {
+              const next = closeTab(list, id, activeTab)
+              setActiveTab(next.activeId)
+              return next.tabs
+            })
+          }}
+          onBack={() => setActiveTab(null)}
+          onPatchProduct={patchProduct}
+          onSay={say}
         />
       ) : null}
 
@@ -432,11 +487,11 @@ export function HomeScreen() {
 function ProductPreview({
   product,
   onClose,
-  onSay,
+  onOpen,
 }: {
   product: Product
   onClose: () => void
-  onSay: (m: string) => void
+  onOpen: () => void
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -505,10 +560,7 @@ function ProductPreview({
 
         <div className="mt-5 flex justify-end gap-2">
           <button
-            onClick={() => {
-              onClose()
-              onSay('O Workspace do produto entra na próxima etapa do porte.')
-            }}
+            onClick={onOpen}
             className="inline-flex min-h-[39px] items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white"
             style={{ background: 'var(--accent-gradient)' }}
           >

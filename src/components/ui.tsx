@@ -172,11 +172,14 @@ export function ConfidenceChip({ level }: { level: Confidence }) {
 export function Panel({
   children,
   className = '',
+  padded = true,
   ...props
-}: ComponentProps<'section'>) {
+}: ComponentProps<'section'> & { padded?: boolean }) {
   return (
     <section
-      className={`rounded-[19px] border border-line bg-solid p-5 ${className}`}
+      className={`overflow-hidden rounded-[19px] border border-line bg-solid ${
+        padded ? 'p-5' : ''
+      } ${className}`}
       {...props}
     >
       {children}

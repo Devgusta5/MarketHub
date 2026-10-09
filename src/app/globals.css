@@ -28,6 +28,12 @@
   --shadow: 0 26px 70px rgba(0, 0, 0, 0.42), 0 1px 3px rgba(0, 0, 0, 0.22);
   --shadow2: 0 12px 34px rgba(0, 0, 0, 0.29), 0 1px 0 rgba(255, 255, 255, 0.035);
 
+  /* Fundo do Workspace: mais sóbrio que a Home, para o conteúdo do
+     produto dominar (§13). */
+  --ws-bg:
+    radial-gradient(ellipse 46% 48% at 78% 10%, rgba(255, 106, 0, 0.065), transparent 84%),
+    linear-gradient(140deg, #0f1016 0%, #141116 57%, #0c0e14 100%);
+
   /* Fundo da Home espacial: gradiente laranja ambiente sobre grafite,
      discreto para não disputar com as fotos dos produtos (§5.1). */
   --home-bg:
@@ -61,6 +67,8 @@
   --shadow2: 0 6px 24px rgba(19, 22, 28, 0.07);
 
   --orange-light: rgba(255, 106, 0, 0.1);
+
+  --ws-bg: linear-gradient(140deg, #f8f8f7, #f5f6f8);
 
   /* O claro tem acabamento próprio, não é inversão do escuro (§5.1). */
   --home-bg:
