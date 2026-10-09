@@ -28,12 +28,15 @@ export function Universe({
   focusId,
   onFocusHandled,
   onOpen,
+  onReady,
 }: {
   products: Product[]
   visibleIds: Set<string>
   focusId: string | null
   onFocusHandled: () => void
   onOpen: (id: string) => void
+  /** Entrega o recentralizar para quem está acima (Dock, Ajustes). */
+  onReady?: (recenter: () => void) => void
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 0, y: 0, z: 1 })
@@ -50,7 +53,8 @@ export function Universe({
 
   useEffect(() => {
     center()
-  }, [center])
+    onReady?.(center)
+  }, [center, onReady])
 
   const zoomBy = useCallback((mult: number, px?: number, py?: number) => {
     const el = hostRef.current
