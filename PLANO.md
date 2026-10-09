@@ -1,246 +1,142 @@
-# MarketHub — Plano do MVP (Catálogo Inteligente)
+# markethub — Plano de execução
 
-> Plano de execução derivado de `plano-central-produtos-conteudo(1).md`.
-> Objetivo desta fase: **testar com produtos reais da empresa**.
-
----
-
-## 1. Pergunta que o MVP tem que responder
-
-> "Consigo pegar um produto real, centralizar suas informações e preparar um anúncio melhor e mais rápido do que faço hoje?"
-
-Tudo que não ajuda a responder isso fica fora. Em particular: integração com Bling, publicação em marketplace, vídeo, fiscal completo, multiempresa, permissões.
-
-### Como medimos se deu certo
-
-Critério concreto, não "parece legal":
-
-- 10 produtos reais cadastrados no sistema.
-- Tempo por produto medido hoje (manual) vs. no MarketHub. Anotar os dois.
-- Quantos textos gerados pela IA foram aproveitados sem reescrever do zero.
-
-Se o tempo não cair e a IA não acertar, o problema está na premissa — melhor descobrir com 10 produtos do que depois de construir integrações.
+> Autoridade: [`docs/DOCUMENTO-MESTRE.md`](docs/DOCUMENTO-MESTRE.md) (v3.0, 08/10/2026).
+> Especificação funcional rodando: [`docs/prototipo/markethub_v2.html`](docs/prototipo/markethub_v2.html).
+> Em conflito, o mestre manda.
 
 ---
 
-## 2. Escopo do MVP
+## 1. Onde estamos
 
-### Dentro
+**Fase A do mestre (§45): refinamento do protótipo.** O HTML v2 existe e valida a UX.
+O trabalho atual é **portá-lo para Next.js** — não para "deixar bonito", mas porque
+um arquivo HTML de 110 KB não evolui para a Fase B (backend, persistência, filas).
 
-| # | Item | Por quê |
+O que o porte entrega que o HTML não entrega:
+
+- Componentes tipados e testáveis, em vez de `innerHTML` com template string.
+- Estado em um lugar só, em vez de 20 variáveis globais.
+- Fronteira cliente/servidor já desenhada para o backend da Fase B.
+- Home espacial em Canvas/WebGL, que o §6.9 pede e o DOM não aguenta.
+
+**O que NÃO muda:** comportamento, fluxo e visual. O protótipo é a referência.
+
+---
+
+## 2. Decisões desta fase
+
+| Decisão | Escolha | Por quê |
 |---|---|---|
-| 1 | Login (Supabase Auth, e-mail/senha) | Precisa rodar hospedado com dados reais |
-| 2 | Catálogo visual (grid de produtos, busca) | Tela inicial do dia a dia |
-| 3 | Ficha central do produto | O coração do conceito: fonte única de verdade |
-| 4 | Upload de imagens + imagem principal | Conteúdo centralizado começa aqui |
-| 5 | IA: título, descrição, tags | Onde está o ganho de tempo |
-| 6 | Versões por marketplace (ML / Shopee / Amazon) | Prova o conceito de Adapter sem integrar nada |
-| 7 | Histórico de alterações | Base de auditoria + mostra o que a IA fez |
+| Destino | Portar para Next.js | Base real para a Fase B |
+| Código Next atual | Só a base técnica (Next 16, TS, tooling) | O mestre revoga Dashboard-como-Home e sidebar fixa |
+| Home espacial | **PixiJS (WebGL)** | §6.9 pede escala de milhares; DOM trava antes disso |
+| Acessibilidade da Home | Camada DOM espelhada, invisível | WebGL não tem semântica; §39.1 exige teclado e leitor de tela |
+| Dados demo | Os 24 produtos do protótipo, placeholder neutro | §6.2 prevê `cover_thumbnail` com placeholder; foto real entra depois |
+| Melhorias | As pendências que o próprio mestre aponta | Ver seção 5 |
 
-O item 6 é a diferença entre "mais um cadastro de produtos" e a ideia do documento. Sem ele o MVP não testa a hipótese central. Mas é **só conteúdo adaptado e copiável** — nenhuma chamada de API de marketplace.
+### Ressalva registrada: WebGL e acessibilidade
 
-### Fora (explicitamente adiado)
+Canvas não expõe elementos para leitor de tela nem recebe foco por teclado.
+O §39.1 exige "navegação alternativa em lista/grade e busca sem depender do
+movimento espacial", e o §44 cobra teclado e leitor de tela.
 
-Integração Bling · publicação real em ML/Shopee/Amazon · geração de vídeo · NCM e fiscal · permissões por papel · multiempresa/SaaS · automação de republicação.
+Solução: **camada DOM espelhada**. Para cada bolinha visível no canvas existe um
+`<button>` posicionado, transparente e com rótulo acessível. O leitor de tela e o
+Tab operam nessa camada; o canvas só desenha. Mais a visão em lista como rota
+alternativa completa.
 
 ---
 
-## 3. Arquitetura
+## 3. Arquitetura do porte
 
 ```text
-┌─────────────────────────────────────────┐
-│  Next.js (App Router) — Vercel          │
-│  ├── Server Components: leitura         │
-│  ├── Server Actions: escrita            │
-│  └── Route Handler: /api/ai/*           │
-└───────────────┬─────────────────────────┘
-                │
-     ┌──────────┴───────────┐
-     ▼                      ▼
-┌──────────────┐    ┌─────────────────┐
-│  Supabase    │    │  Provider de IA │
-│  Postgres    │    │  (interface     │
-│  Auth        │    │   trocável)     │
-│  Storage     │    └─────────────────┘
-└──────────────┘
+app/
+├─ (home)/page.tsx          Home espacial — universo de produtos
+├─ produto/[id]/            Workspace adaptativo (abas, seções)
+└─ layout.tsx               Dock + Launchpad + overlays globais
+
+components/
+├─ universe/                PixiJS: cena, bolinhas, pan/zoom, camada a11y
+├─ dock/                    Dock flutuante, Launchpad, Atividades
+├─ creation/                Janela flutuante, minimizável e arrastável
+├─ workspace/               Seções, abas, inspetor contextual
+└─ ui/                      Design system (botão, chip, janela, campo...)
+
+lib/
+├─ store/                   Estado: produtos, tarefas, criação, preferências
+├─ domain/                  Tipos e máquinas de estado do mestre (§38)
+└─ artwork/                 SVGs dos produtos de demonstração
 ```
 
-### Decisão: sem backend Node separado
+### Fronteiras já pensadas para a Fase B
 
-O documento original sugeria Next + API Node própria. Não faço isso agora:
-
-- O único consumidor da API seria o próprio frontend. Um serviço separado adiciona deploy, contrato e CORS pra manter sem resolver problema nenhum hoje.
-- Integrações futuras (Bling, ML) são **webhooks e jobs**, não "o backend do app". Entram como route handlers ou Supabase Edge Functions quando chegarem, sem tocar no catálogo.
-- O que realmente protege o futuro não é a separação de processos, é o **modelo de dados** (seção 4) e o **adapter de IA** (seção 6).
-
-### Decisão: IA atrás de uma interface
-
-Uma função `generate()` com uma interface própria, implementada por um provider. Trocar de modelo/fornecedor = escrever outro provider. É a camada desacoplada que o documento pede, e custa ~30 linhas.
-
-### Stack
-
-- **Next.js 15** (App Router) + **React 19** + **TypeScript**
-- **Tailwind CSS v4** — estilo
-- **Supabase** — Postgres, Auth, Storage (RLS ligado desde o início)
-- **Zod** — validação de input nas Server Actions
-- **Claude API** (`@anthropic-ai/sdk`, modelo `claude-sonnet-5-5`) — geração de conteúdo e leitura de imagem
-
-Claude em vez de OpenAI: o fluxo de "identificar produto a partir da foto" depende de visão, e o modelo lê a imagem direto do Storage. O provider é trocável de qualquer forma.
+- Nenhum componente chama provedor de IA direto. Toda operação passa por
+  `lib/operations/` com os contratos do §37 (`analisar_produto`,
+  `gerar_imagem`...). Hoje são simulações; na Fase B viram chamadas ao backend.
+- Estado persistido em `localStorage` fica atrás de uma interface
+  (`lib/store/persistence.ts`). Trocar por Supabase não toca componente.
+- **Nenhuma chave de API no cliente, nunca** (§22.2, regra inegociável).
 
 ---
 
-## 4. Modelo de dados
+## 4. Ordem de implementação
 
-A separação que o documento exige — **produto base / conteúdo / versão por marketplace** — está nas tabelas, não só no conceito.
+Cada etapa deixa o app navegável.
 
-```text
-companies
-  └── products ──┬── product_images
-                 ├── product_marketplace_versions   (1 por canal)
-                 └── product_events                 (histórico)
-profiles  (liga auth.users → company)
-```
-
-### `companies`
-`id`, `name`, `created_at`
-
-### `profiles`
-`id` (= `auth.users.id`), `company_id`, `full_name`
-
-Existe só pra responder "de qual empresa é esse usuário?" nas políticas de RLS. Já deixa o caminho multiempresa aberto sem custo hoje.
-
-### `products` — o produto base
-`id`, `company_id`, `sku`, `name`, `internal_name`, `brand`, `category`, `base_description`, `attributes` (jsonb), `tags` (text[]), `status` (`draft` | `ready`), `primary_image_id`, `created_at`, `updated_at`
-
-`attributes` como jsonb porque os campos variam por categoria — normalizar isso agora seria adivinhar o schema de produtos que ainda não existem.
-
-Único: `(company_id, sku)`.
-
-### `product_images` — conteúdo
-`id`, `product_id`, `storage_path`, `position`, `alt_text`, `created_at`
-
-A imagem principal é `products.primary_image_id`, não um booleano na imagem — evita o estado inválido de duas imagens principais.
-
-### `product_marketplace_versions` — o Adapter
-`id`, `product_id`, `marketplace` (`mercado_livre` | `shopee` | `amazon`), `title`, `description`, `bullet_points` (text[]), `fields` (jsonb), `updated_at`
-
-Único: `(product_id, marketplace)`. `bullet_points` existe por causa da Amazon; `fields` absorve o que for específico de cada canal.
-
-Regra: **a versão não duplica o produto**. Campo vazio na versão = usa o do produto base. Isso é o que evita manter três produtos independentes.
-
-### `product_events` — histórico
-`id`, `product_id`, `actor_id`, `kind` (`created` | `updated` | `image_added` | `image_removed` | `ai_generated` | `marketplace_updated`), `payload` (jsonb), `created_at`
-
-Append-only. `payload` guarda o que mudou — inclusive qual prompt/modelo gerou um texto, que é o que permite melhorar prompts na Fase 2.
-
-### Segurança
-
-RLS ligado em todas as tabelas desde a primeira migration: um usuário só vê linhas da própria `company_id`. Storage em bucket privado, URLs assinadas. Ligar RLS depois, com dados reais da empresa dentro, é o tipo de dívida que ninguém paga.
-
----
-
-## 5. Telas
-
-```text
-/login                      → e-mail + senha
-/                           → catálogo (grid, busca, filtro por status)
-/produtos/novo              → criação mínima (nome + SKU)
-/produtos/[id]              → ficha central
-/produtos/[id]/[marketplace]→ versão adaptada do canal
-```
-
-### Ficha central (`/produtos/[id]`)
-
-Três blocos, nessa ordem de prioridade visual:
-
-1. **Imagens** — upload, reordenar, definir principal
-2. **Produto base** — nome, SKU, marca, categoria, descrição base, tags, atributos
-3. **Versões por marketplace** — três cartões (ML / Shopee / Amazon) com status e link
-
-Lateral ou aba: **histórico** do produto.
-
-Cada campo gerável tem um botão de IA ao lado, e o texto cai no campo **como sugestão editável** — nunca salvo direto. É o princípio "a IA sugere; o usuário valida" implementado na UI, não só escrito no documento.
-
----
-
-## 6. Camada de IA
-
-### Interface
-
-```ts
-type AiTask =
-  | { kind: 'identify';    imageUrls: string[] }
-  | { kind: 'title';       product: ProductContext; marketplace?: Marketplace }
-  | { kind: 'description'; product: ProductContext; marketplace?: Marketplace }
-  | { kind: 'tags';        product: ProductContext }
-  | { kind: 'improve';     text: string; instruction?: string }
-
-interface AiProvider {
-  run(task: AiTask): Promise<AiResult>
-}
-```
-
-Prompts por marketplace ficam em arquivos de dados separados (`lib/ai/marketplaces/*.ts`), com as regras de cada canal — limite de caracteres do título no ML, estilo da Shopee, bullets da Amazon. Ajustar as regras não é mexer em código de aplicação.
-
-### Regras
-
-- IA roda **sob clique explícito**, nunca em background.
-- Resultado chega como sugestão; salvar é ação do usuário.
-- Toda geração vira um `product_event` com modelo e prompt usados.
-- Chave de API só no servidor (route handler / server action).
-
----
-
-## 7. Ordem de implementação
-
-Cada etapa deixa o app funcionando — nada de "só funciona no final".
-
-| # | Etapa | Entrega verificável |
+| # | Etapa | Verificável quando |
 |---|---|---|
-| 1 | Projeto Next + Tailwind + TS, layout e shell | App roda, navegação visível |
-| 2 | Catálogo e ficha com dados em memória | Fluxo e telas validados sem banco |
-| 3 | Supabase: migrations, RLS, seed | Schema aplicado |
-| 4 | Auth + login + proteção de rotas | Login real funcionando |
-| 5 | CRUD de produtos via Server Actions | Produto persiste |
-| 6 | Upload de imagens (Storage) + principal | Imagens reais no produto |
-| 7 | Camada de IA: título, descrição, tags | Botões de gerar funcionando |
-| 8 | Versões por marketplace | Conteúdo adaptado por canal |
-| 9 | Histórico | Timeline do produto |
-| 10 | Deploy na Vercel | Acessível pra testar na empresa |
-| 11 | 10 produtos reais + medição | Resposta à pergunta da seção 1 |
-
-A etapa 2 antes do banco é deliberada: é mais barato descobrir que a ficha está errada mexendo em um array do que em migrations.
-
----
-
-## 8. Levantamento na empresa (em paralelo)
-
-Isso não depende de código e vale mais que qualquer feature. Responder, do documento original:
-
-- Quanto tempo leva hoje preparar um produto, do zero à publicação?
-- Quais dados são digitados manualmente mais de uma vez?
-- O que muda de verdade entre ML, Shopee e Amazon? (título? descrição? atributos?)
-- Onde acontecem os erros que dão retrabalho?
-- De onde vêm as imagens hoje?
-
-Risco real: construir o Catálogo Inteligente e descobrir que o gargalo era outro — imagens, por exemplo, ou aprovação de anúncio. Essas respostas, mesmo informais, reordenam o roadmap.
+| 1 | Design system e tokens (dark padrão, gradiente laranja) | Componentes renderizam nos dois temas |
+| 2 | Shell: Dock, Launchpad, overlays, atalhos | Navegação entre módulos funciona |
+| 3 | Home espacial em PixiJS: malha, pan, zoom, hover | 24 bolinhas, arraste e zoom fluidos |
+| 4 | Camada de acessibilidade e visão em lista | Tab percorre produtos; leitor de tela anuncia |
+| 5 | Busca híbrida: lista → voar até a bolinha → expandir | Ctrl+K acha e centraliza o produto |
+| 6 | Cartão de prévia (expansão animada da bolinha) | Clique abre cartão, fechar volta à origem |
+| 7 | Workspace: abas, seções, inspetor | Vários produtos abertos sem duplicar aba |
+| 8 | Nova Criação: janela flutuante, minimizar, confirmar | Minimizar não cancela; rascunho recuperável |
+| 9 | Central de Atividades e fila simulada | Tarefas progridem sem bloquear a interface |
+| 10 | Seções do Workspace: imagens, vídeo, conteúdo, fiscal, histórico | Todas navegáveis com dados demo |
+| 11 | Exportação com relatório de exclusões | Só liberados entram; excluídos justificados |
+| 12 | Ajustes: integrações (visual), orçamento, aparência | Sem campo de chave real (§22.2) |
 
 ---
 
-## 9. Riscos
+## 5. Melhorias sobre o protótipo
+
+O mestre aponta estas lacunas; entram no porte:
+
+| Lacuna | Onde o mestre pede | O que faço |
+|---|---|---|
+| Confiabilidade por atributo | §7.2: Confirmado / Fonte / Provável / Conferir | Cada campo identificado carrega origem e nível |
+| Galeria **e** Lista de comandos | §9.3 [APROVADO], HTML só tem grade | As duas visões, alternáveis |
+| Comparação de versões | §14.2: lado a lado e deslizador | Comparador no editor de imagem |
+| Relatório de exclusões | §17.2: cliente, SKU, canal, motivo, ação, regra | Relatório completo, não só lista |
+| Dois eixos de aprovação | §15.1: criativa ≠ liberação por canal | Estados separados na interface |
+| Vocabulário "cliente" | §1.1: correção de máxima prioridade | "Cliente", nunca "empresa" para quem é atendido |
+
+### O que permanece simulado, e dito como tal
+
+Nenhuma chamada de IA, nenhum pagamento, nenhuma publicação. A interface diz isso
+onde o usuário pode se confundir (§51, regra 4): não declarar conexão, cofre seguro
+ou cobrança real onde há apenas demonstração.
+
+---
+
+## 6. Riscos
 
 | Risco | Mitigação |
 |---|---|
-| O gargalo real não é o cadastro | Levantamento da seção 8 antes de construir integrações |
-| IA gera texto genérico, ninguém usa | Prompts por canal + medir taxa de aproveitamento na seção 1 |
-| Dados reais da empresa expostos | RLS e bucket privado desde a migration 1 |
-| Escopo crescer e o MVP nunca sair | Lista "Fora" da seção 2 é fechada até a etapa 11 |
-| Dependência do catálogo divergir do Bling | Produto base é o dono do conteúdo; integração futura é sincronização, não cópia |
+| WebGL quebra acessibilidade | Camada DOM espelhada + visão em lista (etapa 4, não depois) |
+| PixiJS pesado no mobile | Fallback em grade/lista abaixo de certo viewport (§6.9) |
+| Porte vira redesign por descuido | O protótipo é a referência; divergência só com decisão registrada |
+| Simulação parecer real | Rótulos de demonstração nas telas financeiras e de IA |
+| `localStorage` estourar | Já acontece no HTML com imagens; atrás de interface desde o início |
 
 ---
 
-## 10. Depois do MVP
+## 7. Fora desta fase
 
-Na ordem do roadmap original: uso interno (Fase 2) → integração Bling e marketplaces (Fase 3) → automação (Fase 4) → plataforma (Fase 5).
+Backend, Supabase, autenticação, chamadas reais de IA, cobrança, publicação em
+marketplace, usuários individuais e permissões. Tudo isso é Fase B em diante (§45).
 
-A decisão de ir pra Fase 3 depende do resultado da seção 1. Se o tempo por produto não cair, integrar não resolve — só espalha o problema.
+O protótipo portado **não prova** capacidade de processar APIs, renderizar 3.000
+produtos com qualidade ou entregar SLA. Isso se mede depois, com benchmark (§6.9).
